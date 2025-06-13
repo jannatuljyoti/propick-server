@@ -52,7 +52,21 @@ async function run() {
 
 
 
+  // get 6 data
+  app.get('/recent-queries', async(req,res)=>{
+    try{
+      const recentQueries=await queriesCollection
+      .find({})
+      .sort({timestamp:-1})
+      .limit(6)
+      .toArray();
 
+      res.status(200).send(recentQueries);
+    }catch(error){
+      console.error('Error fetching:', error);
+      res.status(500).send({success:false, message: 'Failed to fetch'});
+    }
+  });
 
 
 
