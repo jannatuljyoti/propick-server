@@ -26,6 +26,36 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
+
+     const database = client.db("propick");
+        const queriesCollection = database.collection("queries");
+
+    app.post('/add-query',async(req,res)=>{
+      try{
+       
+
+        const queryData=req.body;
+
+        // add timestamp
+        queryData.timestamp=new Date().toISOString();
+        queryData.recommendationCount=0;
+
+        const result=await queriesCollection.insertOne(queryData);
+
+        res.status(201).send({success:true, insertedId:result.insertedId});
+
+       } catch(error){
+          console.error('Error adding:',error);
+          res.status(500).send({success:false,message:'Failed to add.'});
+       }
+    });
+
+
+
+
+
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
@@ -34,7 +64,10 @@ async function run() {
     // await client.close();
   }
 }
-run().catch(console.dir);
+run().catch((err) => {
+  console.error('MongoDB error:', err);
+});
+
 
 
 app.get('/',(req,res)=>{
