@@ -29,6 +29,7 @@ async function run() {
 
      const database = client.db("propick");
         const queriesCollection = database.collection("queries");
+        const recommendationsCollection = database.collection("recommendations");
 
     app.post('/add-query',async(req,res)=>{
       try{
@@ -189,6 +190,68 @@ async function run() {
 
     }
   })
+
+
+  // get query by id
+
+  app.get('/query/:id',async(req,res)=>{
+    try{
+      const id=req.params.id;
+      const query = await queriesCollection.findOne({_id: new ObjectId(id)});
+      if(!query) return res.status(404).send({success:false, message:'Query not found'});
+      res.send(query);
+    }catch(error){
+      console.error(error);
+      res.status(500).send({success:false, message:"Error fetching query"});
+    }
+  });
+
+
+  // post recommendations 
+  app.post('/add-recommendation',async(req,res)=>{
+    try{
+      const recommendation=req.body;
+      const result = await recommendationsCollection.insertOne(recommendation);
+      res.status(201).send({success:true, insertedId});
+
+    }catch(error){
+      console.error(error);
+      res.status(500).send({success:false, message:'Failed to add'});
+    }
+  });
+
+  // increment recommendationCount
+  app.patch('/query-recommendation-count/:id', async(req,res)=>{
+    try{
+      const id = req.params.id;
+      const result = await queriesCollection.updateOne(
+        {_id:new ObjectId(id)},
+        {$inc: {recommendationCount:1}}
+      );
+      res.send(result);
+
+    }catch(error){
+      console.error(error);
+      res.status(500).send({success:false, message:'Failed to increment'});
+    }
+  });
+  
+
+  app.get('/recommendations',async(req,res)=>{
+    try{
+      const queryId=req.query.queryId;
+      const recommendations = await recommendationsCollection
+      .find({queryId})
+      .sort({timestamp:-1})
+      toArray();
+
+      res.send(recommendations);
+    }catch(error){
+      console.error(error);
+      res.status(500).send({success:false, message:'Failed to fetch'});
+    }
+  });
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
