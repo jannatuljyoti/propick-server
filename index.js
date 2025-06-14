@@ -172,6 +172,22 @@ async function run() {
       console.error('Error updating query:', error);
       res.status(500).send({success:false, message:'Failed to update query'});
     }
+  });
+
+  // get all queries
+  app.get('/all-queries',async(req,res)=>{
+    try{
+      const allQueries=await queriesCollection
+      .find({})
+      .sort({timestamp:-1})
+      .toArray();
+
+      res.status(200).send(allQueries);
+    }catch(error){
+      console.error('Error fetching all queries:',error)
+      res.status(500).send({success:false, message: 'Failed to fetch'})
+
+    }
   })
 
     // Send a ping to confirm a successful connection
