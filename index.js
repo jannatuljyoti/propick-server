@@ -2,7 +2,7 @@ const express = require('express')
 const cors = require('cors')
 const app = express();
 const port = process.env.PORT || 3000;
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion,ObjectId } = require('mongodb');
 require('dotenv').config()
 
 //middleware
@@ -133,6 +133,22 @@ async function run() {
       res.status(500).send({success:false, message:"Failed to fetch queries"})
     }
   });
+
+  app.delete('/query/:id',async(req,res)=>{
+    try{
+      const id= req.params.id;
+      const result = await queriesCollection.deleteOne({_id:new ObjectId(id)});
+
+      if(result.deletedCount>0){
+        res.status(200).send({success:true, message:"Query deleted"});
+      }else{
+        res.status(404).send({success:false, message:"Query not found"});
+      }
+    }catch(error){
+      console.error('Error deleting query:', error);
+      res.status(500).send({success:false, message:'Failed to delete query'});
+    }
+  })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
