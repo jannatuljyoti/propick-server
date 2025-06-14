@@ -134,6 +134,8 @@ async function run() {
     }
   });
 
+  // delete queries
+
   app.delete('/query/:id',async(req,res)=>{
     try{
       const id= req.params.id;
@@ -147,6 +149,28 @@ async function run() {
     }catch(error){
       console.error('Error deleting query:', error);
       res.status(500).send({success:false, message:'Failed to delete query'});
+    }
+  });
+
+  // update query
+  app.put('/query/:id',async(req,res)=>{
+    try{
+      const id=req.params.id;
+      const updatedData = req.body;
+
+      const result = await queriesCollection.updateOne(
+        {_id: new ObjectId(id)},
+        {$set: updatedData}
+      );
+
+       if(result.modifiedCount>0){
+        res.status(200).send({success:true, message:"Query updated"});
+      }else{
+        res.status(404).send({success:false, message:"No changes"});
+      }
+    }catch(error){
+      console.error('Error updating query:', error);
+      res.status(500).send({success:false, message:'Failed to update query'});
     }
   })
 
