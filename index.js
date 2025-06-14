@@ -113,6 +113,27 @@ async function run() {
   })
 
 
+  // get queries of a specific user
+  app.get('/my-queries',async(req,res)=>{
+    try{
+      const userEmail=req.query.email;
+      if(!userEmail){
+        return res.status(400).send({success:false,message:"Email is required"});
+
+      }
+      const userQueries = await queriesCollection
+      .find({userEmail})
+        .sort({timestamp: -1})
+        .toArray();
+      
+        res.status(200).send(userQueries);
+
+    }catch(error){
+      console.error('Error fetching:',error);
+      res.status(500).send({success:false, message:"Failed to fetch queries"})
+    }
+  });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
