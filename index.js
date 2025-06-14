@@ -69,6 +69,49 @@ async function run() {
   });
 
 
+  // get top 3 recommended queries
+
+  app.get('/top-recommended-queries',async(req,res)=>{
+    try{
+      const topQueries = await queriesCollection
+      .find({})
+        .sort({recommendationCount:-1})
+        .limit(3)
+        .toArray();
+
+      res.status(200).send(topQueries);
+    }catch(error){
+      console.error('Error fetching:',error);
+      res.status(500).send({success:false, message:'Failed to fetch' });
+    }
+  });
+
+
+  // top contributors
+
+  app.get('/top-contributors', async (req,res)=>{
+    try{
+      const pipeline=[
+        {
+          $group:{
+            _id:"$userEmail",
+            userName:{$first:"$userName"},
+            userImage:{$first:"$userImage"},
+            queryCount:{$sum:1}
+          }
+        },
+        {$sort:{queryCount:-1}},
+        {$limit:5}
+      ];
+
+      const result=await queriesCollection.aggregate(pipeline).toArray();
+      res.status(200).send(result);
+    }catch(error){
+      console.error('Error fetching:',error);
+      res.status(500).send({success:false,message:'Failed to fetch'});
+    }
+  })
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
