@@ -212,7 +212,7 @@ async function run() {
     try{
       const recommendation=req.body;
       const result = await recommendationsCollection.insertOne(recommendation);
-      res.status(201).send({success:true, insertedId});
+      res.status(201).send({success:true, insertedId:result.insertedId});
 
     }catch(error){
       console.error(error);
@@ -235,15 +235,15 @@ async function run() {
       res.status(500).send({success:false, message:'Failed to increment'});
     }
   });
-  
 
+//  Get Recommendations for a Query
   app.get('/recommendations',async(req,res)=>{
     try{
       const queryId=req.query.queryId;
       const recommendations = await recommendationsCollection
       .find({queryId})
       .sort({timestamp:-1})
-      toArray();
+      .toArray();
 
       res.send(recommendations);
     }catch(error){
