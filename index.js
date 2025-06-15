@@ -253,6 +253,36 @@ async function run() {
   });
 
 
+  // get all recommendations
+  app.get('/my-recommendations/:email',async(req,res)=>{
+    const email = req.params.email;
+    const recommendations = await recommendationsCollection.find({userEmail:email}).toArray();
+    res.send(recommendations);
+  });
+
+  // delete recommendation and decrease count
+  app.delete('/recommendations/:id', async(req,res)=>{
+    const id =req.params.id;
+
+    // find recommendation to get queryId
+    const recommendation = await recommendationsCollection.findOne({_id: new ObjectId(id)});
+    if(!recommendation){
+      return res.status(404).send({message:'Recommendation not found'});
+    }
+
+    // delete recommendation
+    await recommendationsCollection.deleteOne({_id: new ObjectId(id)});
+
+    // decrease count
+    await queriesCollection.updateOne(
+      {_id: new ObjectId (recommendation.queryId)},
+      {$inc: {recommendationCount: -1}}
+    );
+
+    res.send({message: "Deleted and updated count"})
+  })
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
