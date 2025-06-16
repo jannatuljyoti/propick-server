@@ -36,6 +36,7 @@ async function run() {
        
 
         const queryData=req.body;
+        console.log('Incoming recommendation:',queryData);
 
         // add timestamp
         queryData.timestamp=new Date().toISOString();
@@ -158,16 +159,19 @@ async function run() {
     try{
       const id=req.params.id;
       const updatedData = req.body;
+      delete updatedData._id;
 
+       
+      // const {_id, ...rest}=updatedData;
       const result = await queriesCollection.updateOne(
         {_id: new ObjectId(id)},
         {$set: updatedData}
       );
 
-       if(result.modifiedCount>0){
+       if(result.matchedCount>0){
         res.status(200).send({success:true, message:"Query updated"});
       }else{
-        res.status(404).send({success:false, message:"No changes"});
+        res.status(404).send({success:false, message:"Query not found"});
       }
     }catch(error){
       console.error('Error updating query:', error);
@@ -210,7 +214,30 @@ async function run() {
   // post recommendations 
   app.post('/add-recommendation',async(req,res)=>{
     try{
-      const recommendation=req.body;
+
+      const{queryId,recommenderName,recommenderEmail,userImage, ...rest}=req.body;
+
+      const recommendation={
+        ...rest,
+        queryId:new ObjectId(queryId),
+        timestamp: new Date().toISOString(),
+        recommenderName:recommenderName || 'Anonymous',
+        recommenderEmail:recommenderEmail || 'not_provide@example.com',
+        userImage:userImage || '',
+
+      };
+
+
+      // const query =await queriesCollection.findOne({_id:new ObjectId(queryId)});
+
+      // if(query){
+      //   recommendation.userName=query.userName;
+      //   // recommendation.userImage=query.userImage;
+      //   recommendation.userEmail=query.userEmail;
+
+      // }
+
+
       const result = await recommendationsCollection.insertOne(recommendation);
       res.status(201).send({success:true, insertedId:result.insertedId});
 
@@ -240,12 +267,25 @@ async function run() {
   app.get('/recommendations',async(req,res)=>{
     try{
       const queryId=req.query.queryId;
+      const currentUserEmail=req.query.userEmail;
+
+      if(!queryId){
+        return res.status(400).send({success:false, message:'queryId required'})
+      }
       const recommendations = await recommendationsCollection
-      .find({queryId})
+      .find({queryId : new ObjectId (queryId)})
       .sort({timestamp:-1})
       .toArray();
 
       res.send(recommendations);
+
+
+        const result = recommendations.map(rec => ({
+      ...rec,
+      currentUserEmail: currentUserEmail || null,
+      // তুমি যদি currentUser এর অন্য info পাঠাও যেমন name, image, সে গুলোও এখানে যোগ করতে পারো
+    }));
+
     }catch(error){
       console.error(error);
       res.status(500).send({success:false, message:'Failed to fetch'});
@@ -280,7 +320,32 @@ async function run() {
     );
 
     res.send({message: "Deleted and updated count"})
-  })
+  });
+
+
+  // get all recommendations made by others
+  app.get('/recommendations-forMe/:email', async(req, res)=>{
+    try{
+      const userEmail=req.params.email;
+
+      // get all queries
+      const userQueries = await queriesCollection.find({userEmail}).toArray();
+      const queryIds=userQueries.map(query=>query._id);
+
+      // find all recommendations where queryId is in queryIds
+      const recommendations = await recommendationsCollection
+      .find({
+        queryId:{$in: queryIds},
+        userEmail:{$ne:userEmail}
+      })
+      .toArray();
+
+      res.send(recommendations);
+    }catch(error){
+      console.error('Error fetching received:',error);
+      res.status(500).send({success:false, message:'Failed to fetch'});
+    }
+  });
 
 
     // Send a ping to confirm a successful connection
