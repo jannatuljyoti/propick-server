@@ -273,18 +273,21 @@ async function run() {
         return res.status(400).send({success:false, message:'queryId required'})
       }
       const recommendations = await recommendationsCollection
-      .find({queryId : new ObjectId (queryId)})
+      .find({
+        $or:[
+          {queryId : new ObjectId (queryId)},
+          {queryId:queryId}
+        ]
+      })
       .sort({timestamp:-1})
       .toArray();
 
-      res.send(recommendations);
 
 
-        const result = recommendations.map(rec => ({
-      ...rec,
-      currentUserEmail: currentUserEmail || null,
-      // তুমি যদি currentUser এর অন্য info পাঠাও যেমন name, image, সে গুলোও এখানে যোগ করতে পারো
-    }));
+        res.send(recommendations.map(r=>({
+          ...r,
+          currentUserEmail:currentUserEmail || null
+        })))
 
     }catch(error){
       console.error(error);
@@ -324,19 +327,20 @@ async function run() {
 
 
   // get all recommendations made by others
-  app.get('/recommendations-forMe/:email', async(req, res)=>{
+  app.get('/recommendations-forMe', async(req, res)=>{
+     const email=req.query.email;
     try{
-      const userEmail=req.params.email;
+     
 
       // get all queries
-      const userQueries = await queriesCollection.find({userEmail}).toArray();
+      const userQueries = await queriesCollection.find({userEmail:email}).toArray();
       const queryIds=userQueries.map(query=>query._id);
 
       // find all recommendations where queryId is in queryIds
       const recommendations = await recommendationsCollection
       .find({
-        queryId:{$in: queryIds},
-        userEmail:{$ne:userEmail}
+        queryId:{$in: queryIds}
+        
       })
       .toArray();
 
