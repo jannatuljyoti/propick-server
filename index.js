@@ -2,6 +2,10 @@ const express = require('express')
 const cors = require('cors')
 const app = express();
 const port = process.env.PORT || 3000;
+
+const admin = require("firebase-admin");
+const serviceAccount = require("./firebase-admin-service-key.json");
+
 const { MongoClient, ServerApiVersion,ObjectId } = require('mongodb');
 require('dotenv').config()
 
@@ -21,6 +25,37 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
+
+
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+
+const verifyFireBaseToken = async (req, res, next)=>{
+  console.log('token in the middleware',req.headers);
+  const authHeader = req.headers?.authorization;
+
+  if(!authHeader || !authHeader.startsWith('Bearer ')){
+    return res.status(401).send({message: 'unauthorized access'})
+  }
+
+  const token=authHeader.split(' ')[1];
+
+  try{
+    const decoded = await admin.auth().verifyIdToken(token);
+    console.log('decoded token', decoded)
+    req.decoded = decoded;
+    next();
+  }
+  catch(error){
+    return res.status(401).send({message: 'unauthorized access'})
+
+  }
+}
+
+
 
 async function run() {
   try {
@@ -228,16 +263,6 @@ async function run() {
       };
 
 
-      // const query =await queriesCollection.findOne({_id:new ObjectId(queryId)});
-
-      // if(query){
-      //   recommendation.userName=query.userName;
-      //   // recommendation.userImage=query.userImage;
-      //   recommendation.userEmail=query.userEmail;
-
-      // }
-
-
       const result = await recommendationsCollection.insertOne(recommendation);
       res.status(201).send({success:true, insertedId:result.insertedId});
 
@@ -327,11 +352,14 @@ async function run() {
 
 
   // get all recommendations made by others
-  app.get('/recommendations-forMe', async(req, res)=>{
+  app.get('/recommendations-forMe', verifyFireBaseToken, async(req, res)=>{
      const email=req.query.email;
-    try{
-     
 
+    if(email !== req.decoded.email){
+      return res.status(403).send({message: 'forbidden access'})
+    }
+
+    try{
       // get all queries
       const userQueries = await queriesCollection.find({userEmail:email}).toArray();
       const queryIds=userQueries.map(query=>query._id);
