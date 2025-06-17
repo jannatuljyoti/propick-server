@@ -3,11 +3,14 @@ const cors = require('cors')
 const app = express();
 const port = process.env.PORT || 3000;
 
+require('dotenv').config()
+
 const admin = require("firebase-admin");
-const serviceAccount = require("./firebase-admin-service-key.json");
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
+const serviceAccount = JSON.parse(decoded);
 
 const { MongoClient, ServerApiVersion,ObjectId } = require('mongodb');
-require('dotenv').config()
+
 
 //middleware
 app.use(cors());
@@ -66,7 +69,7 @@ async function run() {
         const queriesCollection = database.collection("queries");
         const recommendationsCollection = database.collection("recommendations");
 
-    app.post('/add-query',async(req,res)=>{
+    app.post('/add-query', verifyFireBaseToken, async(req,res)=>{
       try{
        
 
@@ -151,13 +154,20 @@ async function run() {
 
 
   // get queries of a specific user
-  app.get('/my-queries',async(req,res)=>{
+  app.get('/my-queries', verifyFireBaseToken, async(req,res)=>{
     try{
       const userEmail=req.query.email;
+
       if(!userEmail){
         return res.status(400).send({success:false,message:"Email is required"});
 
       }
+
+      if(email !== req.decoded.email){
+      return res.status(403).send({message: 'forbidden access'})
+    }
+
+
       const userQueries = await queriesCollection
       .find({userEmail})
         .sort({timestamp: -1})
@@ -247,7 +257,7 @@ async function run() {
 
 
   // post recommendations 
-  app.post('/add-recommendation',async(req,res)=>{
+  app.post('/add-recommendation', verifyFireBaseToken, async(req,res)=>{
     try{
 
       const{queryId,recommenderName,recommenderEmail,userImage, ...rest}=req.body;
@@ -322,10 +332,22 @@ async function run() {
 
 
   // get all recommendations
-  app.get('/my-recommendations/:email',async(req,res)=>{
+  app.get('/my-recommendations/:email', verifyFireBaseToken, async(req,res)=>{
     const email = req.params.email;
-    const recommendations = await recommendationsCollection.find({userEmail:email}).toArray();
+  
+     if(email !== req.decoded.email){
+      return res.status(403).send({message: 'forbidden access'})
+    }
+
+    try{
+      const recommendations = await recommendationsCollection.find({userEmail:email}).toArray();
     res.send(recommendations);
+    }catch(error){
+       console.error('Error fetching received:',error);
+      res.status(500).send({success:false, message:'Failed to fetch'});
+    }
+
+    
   });
 
   // delete recommendation and decrease count
