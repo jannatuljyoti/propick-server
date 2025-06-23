@@ -163,7 +163,7 @@ async function run() {
 
       }
 
-      if(email !== req.decoded.email){
+      if(userEmail !== req.decoded.email){
       return res.status(403).send({message: 'forbidden access'})
     }
 
@@ -257,23 +257,37 @@ async function run() {
 
 
   // post recommendations 
-  app.post('/add-recommendation', verifyFireBaseToken, async(req,res)=>{
+  app.post('/add-recommendation', async(req,res)=>{
     try{
 
-      const{queryId,recommenderName,recommenderEmail,userImage, ...rest}=req.body;
+      // const{queryId,recommenderName,recommenderEmail,userImage, ...rest}=req.body;
+      const{queryId,queryTitle,productName,productImage,reason,recommenderName,recommenderEmail,userImage}=req.body;
+
+       if (!ObjectId.isValid(queryId)) {
+      return res.status(400).send({ success: false, message: 'Invalid queryId' });
+    }
+
 
       const recommendation={
-        ...rest,
+        // ...rest,
+        // queryId,
         queryId:new ObjectId(queryId),
-        timestamp: new Date().toISOString(),
+        queryTitle,
+        productName,
+        productImage,
+        reason,
+        // userName,
+        // userEmail,
         recommenderName:recommenderName || 'Anonymous',
         recommenderEmail:recommenderEmail || 'not_provide@example.com',
-        userImage:userImage || '',
-
+         userImage:userImage || '',
+        timestamp: new Date().toISOString()
+       
       };
-
+       
 
       const result = await recommendationsCollection.insertOne(recommendation);
+      console.log('MongoDB insert result:', result);
       res.status(201).send({success:true, insertedId:result.insertedId});
 
     }catch(error){
@@ -308,6 +322,9 @@ async function run() {
         return res.status(400).send({success:false, message:'queryId required'})
       }
       const recommendations = await recommendationsCollection
+      // .find({queryId : new ObjectId(queryId)})
+      // .sort({timestamp:-1})
+      // .toArray();
       .find({
         $or:[
           {queryId : new ObjectId (queryId)},
@@ -332,15 +349,12 @@ async function run() {
 
 
   // get all recommendations
-  app.get('/my-recommendations/:email', verifyFireBaseToken, async(req,res)=>{
+  app.get('/my-recommendations/:email',  async(req,res)=>{
     const email = req.params.email;
   
-     if(email !== req.decoded.email){
-      return res.status(403).send({message: 'forbidden access'})
-    }
 
     try{
-      const recommendations = await recommendationsCollection.find({userEmail:email}).toArray();
+      const recommendations = await recommendationsCollection.find({recommenderEmail:email}).toArray();
     res.send(recommendations);
     }catch(error){
        console.error('Error fetching received:',error);
@@ -374,12 +388,12 @@ async function run() {
 
 
   // get all recommendations made by others
-  app.get('/recommendations-forMe', verifyFireBaseToken, async(req, res)=>{
+  app.get('/recommendations-forMe',  async(req, res)=>{
      const email=req.query.email;
 
-    if(email !== req.decoded.email){
-      return res.status(403).send({message: 'forbidden access'})
-    }
+    // if(email !== req.decoded.email){
+    //   return res.status(403).send({message: 'forbidden access'})
+    // }
 
     try{
       // get all queries
