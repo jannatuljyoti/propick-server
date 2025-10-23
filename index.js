@@ -349,20 +349,32 @@ async function run() {
 
 
   // get all recommendations
-  app.get('/my-recommendations/:email',  async(req,res)=>{
+ app.get("/my-recommendations/:email", async (req, res) => {
+  try {
     const email = req.params.email;
-  
+    const recommendations = await recommendationsCollection.find({ userEmail: email }).toArray();
+    const recommendationCount = recommendations.length;
 
-    try{
-      const recommendations = await recommendationsCollection.find({recommenderEmail:email}).toArray();
-    res.send(recommendations);
-    }catch(error){
-       console.error('Error fetching received:',error);
-      res.status(500).send({success:false, message:'Failed to fetch'});
-    }
+    // 🔹 New badge logic
+    let badge = "Newbie";
+    if (recommendationCount >= 10) badge = "Expert";
+    else if (recommendationCount >= 5) badge = "Contributor";
 
-    
-  });
+    // Always send a proper JSON object
+    res.json({
+      success: true,
+      recommendations,
+      recommendationCount,
+      badge,
+    });
+  } catch (error) {
+    console.error("Error fetching recommendations:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+
+
 
   // delete recommendation and decrease count
   app.delete('/recommendations/:id', async(req,res)=>{
