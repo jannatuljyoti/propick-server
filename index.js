@@ -68,6 +68,8 @@ async function run() {
      const database = client.db("propick");
         const queriesCollection = database.collection("queries");
         const recommendationsCollection = database.collection("recommendations");
+        
+      
 
     app.post('/add-query', verifyFireBaseToken, async(req,res)=>{
       try{
@@ -348,6 +350,7 @@ async function run() {
   });
 
 
+
   // get all recommendations
  app.get("/my-recommendations/:email", async (req, res) => {
   try {
@@ -355,7 +358,7 @@ async function run() {
     const recommendations = await recommendationsCollection.find({ userEmail: email }).toArray();
     const recommendationCount = recommendations.length;
 
-    // 🔹 New badge logic
+    //  New badge logic
     let badge = "Newbie";
     if (recommendationCount >= 10) badge = "Expert";
     else if (recommendationCount >= 5) badge = "Contributor";
@@ -372,6 +375,7 @@ async function run() {
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
+
 
 
 
